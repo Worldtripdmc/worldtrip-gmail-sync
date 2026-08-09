@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   Refresh as RefreshIcon,
@@ -7,6 +7,10 @@ import {
   Email as EmailIcon,
   PersonAdd as PersonAddIcon,
   Person as PersonIcon,
+  Search as SearchIcon,
+  FilterList as FilterListIcon,
+  ArrowUpward as ArrowUpwardIcon,
+  ArrowDownward as ArrowDownwardIcon,
 } from "@mui/icons-material";
 
 import {
@@ -15,8 +19,11 @@ import {
   CircularProgress,
   Divider,
   IconButton,
+  InputAdornment,
   Paper,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from "@mui/material";
 
@@ -47,6 +54,17 @@ const DailyEmailReport = ({
   const [error, setError] = useState("");
 
   // ==========================================
+  // FILTER STATES
+  // ==========================================
+
+  const [filter, setFilter] = useState("ALL");
+
+  const [searchText, setSearchText] = useState("");
+
+  const [sortOrder, setSortOrder] =
+    useState("LATEST");
+
+  // ==========================================
   // FETCH DAILY REPORT
   // ==========================================
 
@@ -69,7 +87,8 @@ const DailyEmailReport = ({
         );
       }
 
-      const result = await response.json();
+      const result =
+        await response.json();
 
       if (!result.success) {
         throw new Error(
@@ -109,9 +128,15 @@ const DailyEmailReport = ({
   // ==========================================
 
   const handleDateChange = (event) => {
-    const newDate = event.target.value;
+    const newDate =
+      event.target.value;
 
     setSelectedDate(newDate);
+
+    // Reset filters when date changes
+    setFilter("ALL");
+    setSearchText("");
+    setSortOrder("LATEST");
 
     fetchDailyReport(newDate);
   };
@@ -122,6 +147,21 @@ const DailyEmailReport = ({
 
   const handleRefresh = () => {
     fetchDailyReport(selectedDate);
+  };
+
+  // ==========================================
+  // FILTER CHANGE
+  // ==========================================
+
+  const handleFilterChange = (
+    event,
+    newFilter
+  ) => {
+    if (!newFilter) {
+      return;
+    }
+
+    setFilter(newFilter);
   };
 
   // ==========================================
@@ -137,8 +177,11 @@ const DailyEmailReport = ({
       "en-IN",
       {
         timeZone: "Asia/Kolkata",
+
         hour: "2-digit",
+
         minute: "2-digit",
+
         hour12: true,
       }
     ).format(new Date(date));
@@ -148,7 +191,8 @@ const DailyEmailReport = ({
   // SUMMARY VALUES
   // ==========================================
 
-  const summary = report?.summary || {};
+  const summary =
+    report?.summary || {};
 
   const totalEmails =
     summary.totalEmails || 0;
@@ -162,7 +206,124 @@ const DailyEmailReport = ({
   const existingContacts =
     summary.existingContacts || 0;
 
-  const reportData = report?.data || [];
+  const reportData =
+    report?.data || [];
+
+  // ==========================================
+  // FILTER + SEARCH + SORT
+  // ==========================================
+
+  const filteredEmails =
+    useMemo(() => {
+      let data = [...reportData];
+
+      // --------------------------------------
+      // CONTACT FILTER
+      // --------------------------------------
+
+      if (filter === "NEW") {
+        data = data.filter(
+          (item) =>
+            item.contactStatus ===
+            "NEW"
+        );
+      }
+
+      if (filter === "EXISTING") {
+        data = data.filter(
+          (item) =>
+            item.contactStatus ===
+            "EXISTING"
+        );
+      }
+
+      // --------------------------------------
+      // SEARCH
+      // --------------------------------------
+
+      const search =
+        searchText
+          .trim()
+          .toLowerCase();
+
+      if (search) {
+        data = data.filter(
+          (item) => {
+            const name =
+              item.name || "";
+
+            const email =
+              item.email || "";
+
+            const subject =
+              item.subject || "";
+
+            const domain =
+              item.domain || "";
+
+            const snippet =
+              item.snippet || "";
+
+            return (
+              name
+                .toLowerCase()
+                .includes(search) ||
+              email
+                .toLowerCase()
+                .includes(search) ||
+              subject
+                .toLowerCase()
+                .includes(search) ||
+              domain
+                .toLowerCase()
+                .includes(search) ||
+              snippet
+                .toLowerCase()
+                .includes(search)
+            );
+          }
+        );
+      }
+
+      // --------------------------------------
+      // SORT
+      // --------------------------------------
+
+      data.sort((a, b) => {
+        const dateA =
+          new Date(
+            a.date || 0
+          ).getTime();
+
+        const dateB =
+          new Date(
+            b.date || 0
+          ).getTime();
+
+        if (
+          sortOrder === "LATEST"
+        ) {
+          return dateB - dateA;
+        }
+
+        return dateA - dateB;
+      });
+
+      return data;
+    }, [
+      reportData,
+      filter,
+      searchText,
+      sortOrder,
+    ]);
+
+  // ==========================================
+  // CLEAR SEARCH
+  // ==========================================
+
+  const handleClearSearch = () => {
+    setSearchText("");
+  };
 
   // ==========================================
   // RENDER
@@ -184,21 +345,40 @@ const DailyEmailReport = ({
       <Paper
         elevation={0}
         sx={{
-          border: "1px solid #e5e7eb",
-          borderRadius: "10px 10px 0 0",
-          backgroundColor: "#ffffff",
+          border:
+            "1px solid #e5e7eb",
+
+          borderRadius:
+            "10px 10px 0 0",
+
+          backgroundColor:
+            "#ffffff",
         }}
       >
         <Box
           sx={{
             minHeight: 64,
+
             display: "flex",
+
             alignItems: "center",
+
             px: {
               xs: 1,
               md: 2,
             },
+
             gap: 1,
+
+            flexWrap: {
+              xs: "wrap",
+              md: "nowrap",
+            },
+
+            py: {
+              xs: 1,
+              md: 0,
+            },
           }}
         >
           <CalendarMonthIcon
@@ -212,6 +392,8 @@ const DailyEmailReport = ({
               fontSize: 16,
               fontWeight: 600,
               color: "#202124",
+              whiteSpace:
+                "nowrap",
             }}
           >
             Daily Email Report
@@ -227,21 +409,26 @@ const DailyEmailReport = ({
             type="date"
             size="small"
             value={selectedDate}
-            onChange={handleDateChange}
+            onChange={
+              handleDateChange
+            }
             sx={{
               width: {
                 xs: 150,
                 sm: 170,
               },
 
-              "& .MuiInputBase-input": {
-                fontSize: 13,
-              },
+              "& .MuiInputBase-input":
+                {
+                  fontSize: 13,
+                },
             }}
           />
 
           <IconButton
-            onClick={handleRefresh}
+            onClick={
+              handleRefresh
+            }
             disabled={loading}
           >
             <RefreshIcon />
@@ -256,10 +443,17 @@ const DailyEmailReport = ({
       <Paper
         elevation={0}
         sx={{
-          border: "1px solid #e5e7eb",
+          border:
+            "1px solid #e5e7eb",
+
           borderTop: "none",
-          borderRadius: "0 0 10px 10px",
-          backgroundColor: "#ffffff",
+
+          borderRadius:
+            "0 0 10px 10px",
+
+          backgroundColor:
+            "#ffffff",
+
           minHeight:
             "calc(100vh - 150px)",
         }}
@@ -272,18 +466,29 @@ const DailyEmailReport = ({
           <Box
             sx={{
               minHeight: "60vh",
+
               display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexDirection: "column",
+
+              alignItems:
+                "center",
+
+              justifyContent:
+                "center",
+
+              flexDirection:
+                "column",
             }}
           >
-            <CircularProgress size={32} />
+            <CircularProgress
+              size={32}
+            />
 
             <Typography
               sx={{
                 mt: 2,
+
                 color: "#5f6368",
+
                 fontSize: 14,
               }}
             >
@@ -300,17 +505,27 @@ const DailyEmailReport = ({
           <Box
             sx={{
               minHeight: "60vh",
+
               display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexDirection: "column",
+
+              alignItems:
+                "center",
+
+              justifyContent:
+                "center",
+
+              flexDirection:
+                "column",
+
               px: 2,
             }}
           >
             <Typography
               sx={{
                 color: "#d93025",
+
                 fontWeight: 600,
+
                 mb: 1,
               }}
             >
@@ -320,8 +535,12 @@ const DailyEmailReport = ({
             <Typography
               sx={{
                 color: "#5f6368",
+
                 fontSize: 13,
-                textAlign: "center",
+
+                textAlign:
+                  "center",
+
                 mb: 2,
               }}
             >
@@ -330,9 +549,12 @@ const DailyEmailReport = ({
 
             <Button
               variant="outlined"
-              onClick={handleRefresh}
+              onClick={
+                handleRefresh
+              }
               sx={{
-                textTransform: "none",
+                textTransform:
+                  "none",
               }}
             >
               Try Again
@@ -358,12 +580,14 @@ const DailyEmailReport = ({
                     xs: 2,
                     md: 3,
                   },
+
                   py: 2,
                 }}
               >
                 <Typography
                   sx={{
                     fontSize: 13,
+
                     color: "#5f6368",
                   }}
                 >
@@ -373,8 +597,11 @@ const DailyEmailReport = ({
                 <Typography
                   sx={{
                     fontSize: 18,
+
                     fontWeight: 600,
+
                     color: "#202124",
+
                     mt: 0.3,
                   }}
                 >
@@ -391,11 +618,15 @@ const DailyEmailReport = ({
               <Box
                 sx={{
                   display: "grid",
+
                   gridTemplateColumns: {
                     xs: "1fr 1fr",
+
                     md: "repeat(4, 1fr)",
                   },
+
                   gap: 2,
+
                   p: {
                     xs: 2,
                     md: 3,
@@ -409,13 +640,16 @@ const DailyEmailReport = ({
                   sx={{
                     border:
                       "1px solid #e5e7eb",
+
                     borderRadius: 2,
+
                     p: 2,
                   }}
                 >
                   <EmailIcon
                     sx={{
                       color: "#1a73e8",
+
                       mb: 1,
                     }}
                   />
@@ -423,7 +657,9 @@ const DailyEmailReport = ({
                   <Typography
                     sx={{
                       fontSize: 12,
-                      color: "#5f6368",
+
+                      color:
+                        "#5f6368",
                     }}
                   >
                     Total Emails
@@ -432,8 +668,12 @@ const DailyEmailReport = ({
                   <Typography
                     sx={{
                       fontSize: 24,
+
                       fontWeight: 700,
-                      color: "#202124",
+
+                      color:
+                        "#202124",
+
                       mt: 0.5,
                     }}
                   >
@@ -448,13 +688,17 @@ const DailyEmailReport = ({
                   sx={{
                     border:
                       "1px solid #e5e7eb",
+
                     borderRadius: 2,
+
                     p: 2,
                   }}
                 >
                   <PeopleIcon
                     sx={{
-                      color: "#1a73e8",
+                      color:
+                        "#1a73e8",
+
                       mb: 1,
                     }}
                   />
@@ -462,7 +706,9 @@ const DailyEmailReport = ({
                   <Typography
                     sx={{
                       fontSize: 12,
-                      color: "#5f6368",
+
+                      color:
+                        "#5f6368",
                     }}
                   >
                     Unique Contacts
@@ -471,8 +717,12 @@ const DailyEmailReport = ({
                   <Typography
                     sx={{
                       fontSize: 24,
+
                       fontWeight: 700,
-                      color: "#202124",
+
+                      color:
+                        "#202124",
+
                       mt: 0.5,
                     }}
                   >
@@ -487,13 +737,17 @@ const DailyEmailReport = ({
                   sx={{
                     border:
                       "1px solid #e5e7eb",
+
                     borderRadius: 2,
+
                     p: 2,
                   }}
                 >
                   <PersonAddIcon
                     sx={{
-                      color: "#188038",
+                      color:
+                        "#188038",
+
                       mb: 1,
                     }}
                   />
@@ -501,7 +755,9 @@ const DailyEmailReport = ({
                   <Typography
                     sx={{
                       fontSize: 12,
-                      color: "#5f6368",
+
+                      color:
+                        "#5f6368",
                     }}
                   >
                     New Contacts
@@ -510,8 +766,12 @@ const DailyEmailReport = ({
                   <Typography
                     sx={{
                       fontSize: 24,
+
                       fontWeight: 700,
-                      color: "#188038",
+
+                      color:
+                        "#188038",
+
                       mt: 0.5,
                     }}
                   >
@@ -526,13 +786,17 @@ const DailyEmailReport = ({
                   sx={{
                     border:
                       "1px solid #e5e7eb",
+
                     borderRadius: 2,
+
                     p: 2,
                   }}
                 >
                   <PersonIcon
                     sx={{
-                      color: "#5f6368",
+                      color:
+                        "#5f6368",
+
                       mb: 1,
                     }}
                   />
@@ -540,7 +804,9 @@ const DailyEmailReport = ({
                   <Typography
                     sx={{
                       fontSize: 12,
-                      color: "#5f6368",
+
+                      color:
+                        "#5f6368",
                     }}
                   >
                     Existing Contacts
@@ -549,8 +815,12 @@ const DailyEmailReport = ({
                   <Typography
                     sx={{
                       fontSize: 24,
+
                       fontWeight: 700,
-                      color: "#202124",
+
+                      color:
+                        "#202124",
+
                       mt: 0.5,
                     }}
                   >
@@ -562,14 +832,195 @@ const DailyEmailReport = ({
               <Divider />
 
               {/* ==============================
+                  FILTER / SEARCH TOOLBAR
+              ============================== */}
+
+              <Box
+                sx={{
+                  px: {
+                    xs: 2,
+                    md: 3,
+                  },
+
+                  py: 2,
+
+                  display: "flex",
+
+                  flexDirection: {
+                    xs: "column",
+                    md: "row",
+                  },
+
+                  gap: 1.5,
+
+                  alignItems: {
+                    xs: "stretch",
+                    md: "center",
+                  },
+                }}
+              >
+                {/* FILTER ICON */}
+
+                <FilterListIcon
+                  sx={{
+                    color:
+                      "#5f6368",
+
+                    display: {
+                      xs: "none",
+                      md: "block",
+                    },
+                  }}
+                />
+
+                {/* CONTACT FILTER */}
+
+                <ToggleButtonGroup
+                  value={filter}
+                  exclusive
+                  onChange={
+                    handleFilterChange
+                  }
+                  size="small"
+                  sx={{
+                    flexShrink: 0,
+
+                    "& .MuiToggleButton-root":
+                      {
+                        textTransform:
+                          "none",
+
+                        fontSize: 12,
+
+                        px: 1.5,
+                      },
+                  }}
+                >
+                  <ToggleButton value="ALL">
+                    All Emails
+                  </ToggleButton>
+
+                  <ToggleButton value="NEW">
+                    New Contacts
+                  </ToggleButton>
+
+                  <ToggleButton value="EXISTING">
+                    Existing
+                  </ToggleButton>
+                </ToggleButtonGroup>
+
+                {/* SEARCH */}
+
+                <TextField
+                  size="small"
+                  placeholder="Search sender, email, subject or domain..."
+                  value={searchText}
+                  onChange={(event) =>
+                    setSearchText(
+                      event.target.value
+                    )
+                  }
+                  sx={{
+                    flex: 1,
+
+                    minWidth: {
+                      md: 250,
+                    },
+
+                    "& .MuiInputBase-input":
+                      {
+                        fontSize: 13,
+                      },
+                  }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon
+                          sx={{
+                            fontSize: 20,
+
+                            color:
+                              "#80868b",
+                          }}
+                        />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+
+                {/* CLEAR */}
+
+                {searchText && (
+                  <Button
+                    size="small"
+                    onClick={
+                      handleClearSearch
+                    }
+                    sx={{
+                      textTransform:
+                        "none",
+
+                      whiteSpace:
+                        "nowrap",
+                    }}
+                  >
+                    Clear
+                  </Button>
+                )}
+
+                {/* SORT */}
+
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() =>
+                    setSortOrder(
+                      sortOrder ===
+                        "LATEST"
+                        ? "OLDEST"
+                        : "LATEST"
+                    )
+                  }
+                  startIcon={
+                    sortOrder ===
+                    "LATEST" ? (
+                      <ArrowDownwardIcon />
+                    ) : (
+                      <ArrowUpwardIcon />
+                    )
+                  }
+                  sx={{
+                    textTransform:
+                      "none",
+
+                    whiteSpace:
+                      "nowrap",
+
+                    minWidth: 125,
+                  }}
+                >
+                  {sortOrder ===
+                  "LATEST"
+                    ? "Latest"
+                    : "Oldest"}
+                </Button>
+              </Box>
+
+              <Divider />
+
+              {/* ==============================
                   EMAIL LIST HEADER
               ============================== */}
 
               <Box
                 sx={{
                   minHeight: 56,
+
                   display: "flex",
-                  alignItems: "center",
+
+                  alignItems:
+                    "center",
+
                   px: {
                     xs: 2,
                     md: 3,
@@ -579,8 +1030,11 @@ const DailyEmailReport = ({
                 <Typography
                   sx={{
                     fontSize: 15,
+
                     fontWeight: 600,
-                    color: "#202124",
+
+                    color:
+                      "#202124",
                   }}
                 >
                   Received Emails
@@ -595,10 +1049,15 @@ const DailyEmailReport = ({
                 <Typography
                   sx={{
                     fontSize: 12,
-                    color: "#5f6368",
+
+                    color:
+                      "#5f6368",
                   }}
                 >
-                  {reportData.length} emails
+                  Showing{" "}
+                  {filteredEmails.length}{" "}
+                  of{" "}
+                  {reportData.length}
                 </Typography>
               </Box>
 
@@ -608,21 +1067,34 @@ const DailyEmailReport = ({
                   NO EMAILS
               ============================== */}
 
-              {reportData.length === 0 && (
+              {reportData.length ===
+                0 && (
                 <Box
                   sx={{
-                    minHeight: "40vh",
+                    minHeight:
+                      "40vh",
+
                     display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexDirection: "column",
+
+                    alignItems:
+                      "center",
+
+                    justifyContent:
+                      "center",
+
+                    flexDirection:
+                      "column",
+
                     px: 2,
                   }}
                 >
                   <EmailIcon
                     sx={{
                       fontSize: 56,
-                      color: "#dadce0",
+
+                      color:
+                        "#dadce0",
+
                       mb: 2,
                     }}
                   />
@@ -630,8 +1102,11 @@ const DailyEmailReport = ({
                   <Typography
                     sx={{
                       fontSize: 17,
+
                       fontWeight: 600,
-                      color: "#3c4043",
+
+                      color:
+                        "#3c4043",
                     }}
                   >
                     No emails received
@@ -640,24 +1115,100 @@ const DailyEmailReport = ({
                   <Typography
                     sx={{
                       mt: 0.5,
+
                       fontSize: 13,
-                      color: "#80868b",
+
+                      color:
+                        "#80868b",
                     }}
                   >
-                    No received emails were
-                    found for this date.
+                    No received emails
+                    were found for
+                    this date.
                   </Typography>
                 </Box>
               )}
 
               {/* ==============================
+                  FILTERED RESULT EMPTY
+              ============================== */}
+
+              {reportData.length >
+                0 &&
+                filteredEmails.length ===
+                  0 && (
+                  <Box
+                    sx={{
+                      minHeight:
+                        "30vh",
+
+                      display:
+                        "flex",
+
+                      alignItems:
+                        "center",
+
+                      justifyContent:
+                        "center",
+
+                      flexDirection:
+                        "column",
+
+                      px: 2,
+                    }}
+                  >
+                    <SearchIcon
+                      sx={{
+                        fontSize: 48,
+
+                        color:
+                          "#dadce0",
+
+                        mb: 1.5,
+                      }}
+                    />
+
+                    <Typography
+                      sx={{
+                        fontSize: 16,
+
+                        fontWeight: 600,
+
+                        color:
+                          "#3c4043",
+                      }}
+                    >
+                      No matching emails
+                    </Typography>
+
+                    <Typography
+                      sx={{
+                        mt: 0.5,
+
+                        fontSize: 13,
+
+                        color:
+                          "#80868b",
+                      }}
+                    >
+                      Try another
+                      search or filter.
+                    </Typography>
+                  </Box>
+                )}
+
+              {/* ==============================
                   EMAIL LIST
               ============================== */}
 
-              {reportData.length > 0 && (
+              {filteredEmails.length >
+                0 && (
                 <Box>
-                  {reportData.map(
-                    (item, index) => (
+                  {filteredEmails.map(
+                    (
+                      item,
+                      index
+                    ) => (
                       <Box
                         key={
                           item.gmailId ||
@@ -669,36 +1220,51 @@ const DailyEmailReport = ({
                             xs: 2,
                             md: 3,
                           },
+
                           py: 1.8,
+
                           borderBottom:
                             "1px solid #f1f3f4",
-                          "&:hover": {
-                            backgroundColor:
-                              "#f8fafd",
-                          },
+
+                          "&:hover":
+                            {
+                              backgroundColor:
+                                "#f8fafd",
+                            },
                         }}
                       >
                         {/* TOP ROW */}
 
                         <Box
                           sx={{
-                            display: "flex",
+                            display:
+                              "flex",
+
                             alignItems:
                               "center",
+
                             gap: 1,
                           }}
                         >
                           <Typography
                             sx={{
                               flex: 1,
+
                               minWidth: 0,
+
                               fontSize: 14,
+
                               fontWeight: 600,
-                              color: "#202124",
+
+                              color:
+                                "#202124",
+
                               overflow:
                                 "hidden",
+
                               textOverflow:
                                 "ellipsis",
+
                               whiteSpace:
                                 "nowrap",
                             }}
@@ -710,7 +1276,10 @@ const DailyEmailReport = ({
                           <Typography
                             sx={{
                               fontSize: 12,
-                              color: "#5f6368",
+
+                              color:
+                                "#5f6368",
+
                               whiteSpace:
                                 "nowrap",
                             }}
@@ -726,12 +1295,18 @@ const DailyEmailReport = ({
                         <Typography
                           sx={{
                             fontSize: 13,
-                            color: "#5f6368",
+
+                            color:
+                              "#5f6368",
+
                             mt: 0.3,
+
                             overflow:
                               "hidden",
+
                             textOverflow:
                               "ellipsis",
+
                             whiteSpace:
                               "nowrap",
                           }}
@@ -744,13 +1319,20 @@ const DailyEmailReport = ({
                         <Typography
                           sx={{
                             fontSize: 14,
-                            color: "#202124",
+
+                            color:
+                              "#202124",
+
                             fontWeight: 500,
+
                             mt: 0.7,
+
                             overflow:
                               "hidden",
+
                             textOverflow:
                               "ellipsis",
+
                             whiteSpace:
                               "nowrap",
                           }}
@@ -759,46 +1341,123 @@ const DailyEmailReport = ({
                             "(No Subject)"}
                         </Typography>
 
+                        {/* SNIPPET */}
+
+                        {item.snippet && (
+                          <Typography
+                            sx={{
+                              fontSize: 12,
+
+                              color:
+                                "#80868b",
+
+                              mt: 0.4,
+
+                              overflow:
+                                "hidden",
+
+                              textOverflow:
+                                "ellipsis",
+
+                              whiteSpace:
+                                "nowrap",
+                            }}
+                          >
+                            {
+                              item.snippet
+                            }
+                          </Typography>
+                        )}
+
                         {/* BOTTOM ROW */}
 
                         <Box
                           sx={{
-                            display: "flex",
+                            display:
+                              "flex",
+
                             alignItems:
                               "center",
+
                             gap: 1,
+
                             mt: 0.8,
+
+                            flexWrap:
+                              "wrap",
                           }}
                         >
                           <Typography
                             sx={{
                               fontSize: 11,
-                              color: "#5f6368",
+
+                              color:
+                                "#5f6368",
                             }}
                           >
-                            {item.domain}
+                            {
+                              item.domain
+                            }
                           </Typography>
+
+                          {/* EMAIL STATUS */}
 
                           <Box
                             sx={{
                               px: 1,
+
                               py: 0.2,
-                              borderRadius: 1,
+
+                              borderRadius:
+                                1,
+
                               backgroundColor:
-                                item.type ===
-                                "NEW"
-                                  ? "#e6f4ea"
-                                  : "#f1f3f4",
+                                "#e8f0fe",
+
                               color:
-                                item.type ===
-                                "NEW"
-                                  ? "#188038"
-                                  : "#5f6368",
+                                "#1967d2",
+
                               fontSize: 10,
+
                               fontWeight: 700,
                             }}
                           >
-                            {item.type}
+                            EMAIL:{" "}
+                            {item.emailStatus ||
+                              "NEW"}
+                          </Box>
+
+                          {/* CONTACT STATUS */}
+
+                          <Box
+                            sx={{
+                              px: 1,
+
+                              py: 0.2,
+
+                              borderRadius:
+                                1,
+
+                              backgroundColor:
+                                item.contactStatus ===
+                                "NEW"
+                                  ? "#e6f4ea"
+                                  : "#f1f3f4",
+
+                              color:
+                                item.contactStatus ===
+                                "NEW"
+                                  ? "#188038"
+                                  : "#5f6368",
+
+                              fontSize: 10,
+
+                              fontWeight: 700,
+                            }}
+                          >
+                            CONTACT:{" "}
+                            {item.contactStatus ||
+                              "EXISTING"}
                           </Box>
                         </Box>
                       </Box>
