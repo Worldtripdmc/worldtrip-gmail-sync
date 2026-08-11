@@ -6,6 +6,7 @@ import {
   MoreVert as MoreVertIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
+  Download as DownloadIcon,
 } from "@mui/icons-material";
 
 import {
@@ -95,6 +96,223 @@ function EmailContacts({
     );
   };
 
+
+  // ==========================================
+// EXPORT CONTACTS
+// ==========================================
+
+const handleExportContacts = () => {
+  const url =
+    "http://localhost:8000/api/gmail/contacts/export";
+
+  window.open(
+    url,
+    "_blank"
+  );
+};
+
+
+  // ==========================================
+  // CSV VALUE ESCAPE
+  // ==========================================
+
+  const escapeCsvValue = (value) => {
+    if (
+      value === null ||
+      value === undefined
+    ) {
+      return "";
+    }
+
+    const stringValue =
+      String(value);
+
+    return `"${stringValue.replace(
+      /"/g,
+      '""'
+    )}"`;
+  };
+
+  // ==========================================
+  // FORMAT DATE FOR CSV
+  // ==========================================
+
+  const formatDateForCsv = (
+    value
+  ) => {
+    if (!value) {
+      return "";
+    }
+
+    const date =
+      new Date(value);
+
+    if (
+      Number.isNaN(
+        date.getTime()
+      )
+    ) {
+      return "";
+    }
+
+    return date.toLocaleDateString(
+      "en-IN",
+      {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }
+    );
+  };
+
+  // ==========================================
+  // EXPORT CONTACTS
+  // ==========================================
+
+  const handleExportContacts = () => {
+    if (!contacts.length) {
+      return;
+    }
+
+    // ======================================
+    // CSV HEADER
+    // ======================================
+
+    const headers = [
+      "Email",
+      "Name",
+      "First Email",
+      "Last Email",
+      "Total Emails",
+      "Source",
+      "Status",
+      "Domain",
+    ];
+
+    // ======================================
+    // CSV ROWS
+    // ======================================
+
+    const rows =
+      contacts.map(
+        (contact) => [
+          escapeCsvValue(
+            contact.email
+          ),
+
+          escapeCsvValue(
+            contact.name
+          ),
+
+          escapeCsvValue(
+            formatDateForCsv(
+              contact.firstEmail
+            )
+          ),
+
+          escapeCsvValue(
+            formatDateForCsv(
+              contact.lastEmail
+            )
+          ),
+
+          escapeCsvValue(
+            contact.totalEmails || 0
+          ),
+
+          escapeCsvValue(
+            contact.source || "Gmail"
+          ),
+
+          escapeCsvValue(
+            contact.status || "Active"
+          ),
+
+          escapeCsvValue(
+            contact.domain
+          ),
+        ]
+      );
+
+    // ======================================
+    // CREATE CSV
+    // ======================================
+
+    const csvContent = [
+      headers
+        .map(
+          escapeCsvValue
+        )
+        .join(","),
+
+      ...rows.map(
+        (row) =>
+          row.join(",")
+      ),
+    ].join("\r\n");
+
+    // ======================================
+    // UTF-8 BOM
+    // ======================================
+    //
+    // Excel / Google Sheets ke liye
+    // Hindi/Unicode names properly support
+    // karne ke liye BOM add kar rahe hain.
+    //
+    // ======================================
+
+    const csvWithBom =
+      "\uFEFF" +
+      csvContent;
+
+    // ======================================
+    // CREATE FILE
+    // ======================================
+
+    const blob =
+      new Blob(
+        [csvWithBom],
+        {
+          type:
+            "text/csv;charset=utf-8;",
+        }
+      );
+
+    const url =
+      URL.createObjectURL(
+        blob
+      );
+
+    // ======================================
+    // DOWNLOAD
+    // ======================================
+
+    const link =
+      document.createElement(
+        "a"
+      );
+
+    link.href = url;
+
+    link.download =
+      `WorldTrip_Gmail_Contacts_${new Date()
+        .toISOString()
+        .slice(0, 10)}.csv`;
+
+    document.body.appendChild(
+      link
+    );
+
+    link.click();
+
+    document.body.removeChild(
+      link
+    );
+
+    URL.revokeObjectURL(
+      url
+    );
+  };
 
   // ==========================================
   // RENDER
@@ -194,6 +412,36 @@ function EmailContacts({
             }}
           />
 
+          {/* EXPORT */}
+
+          <Button
+            variant="outlined"
+            startIcon={
+              <DownloadIcon />
+            }
+            onClick={
+              handleExportContacts
+            }
+            disabled={
+              contactLoading ||
+              contacts.length === 0
+            }
+            sx={{
+              textTransform:
+                "none",
+
+              fontSize: 13,
+
+              fontWeight: 600,
+
+              borderRadius:
+                "8px",
+
+              mr: 0.5,
+            }}
+          >
+            Export Contacts
+          </Button>
 
           {/* REFRESH */}
 
@@ -211,9 +459,9 @@ function EmailContacts({
           <IconButton>
             <MoreVertIcon />
           </IconButton>
-
+    
         </Box>
-
+    
       </Paper>
 
 
@@ -280,8 +528,8 @@ function EmailContacts({
               }}
             >
               Loading contacts...
+           
             </Typography>
-
           </Box>
         )}
 
@@ -291,8 +539,8 @@ function EmailContacts({
         ==================================== */}
 
         {!contactLoading &&
-          contactError && (
-
+   
+   contactError && (
             <Box
               sx={{
                 minHeight:
@@ -313,7 +561,7 @@ function EmailContacts({
                 px: 2,
               }}
             >
-
+    
               <Typography
                 sx={{
                   color:
@@ -345,7 +593,6 @@ function EmailContacts({
                 {contactError}
               </Typography>
 
-
               <Button
                 variant="outlined"
                 onClick={
@@ -358,11 +605,11 @@ function EmailContacts({
               >
                 Try Again
               </Button>
-
+      
             </Box>
           )}
 
-
+     
         {/* ====================================
             NO CONTACTS
         ==================================== */}
@@ -370,7 +617,7 @@ function EmailContacts({
         {!contactLoading &&
           !contactError &&
           contacts.length === 0 && (
-
+ 
             <Box
               sx={{
                 minHeight:
@@ -391,7 +638,7 @@ function EmailContacts({
                 px: 2,
               }}
             >
-
+   
               <PeopleIcon
                 sx={{
                   fontSize: 64,
@@ -433,11 +680,11 @@ function EmailContacts({
               >
                 No email contacts are available.
               </Typography>
-
+   
             </Box>
           )}
 
-
+   
         {/* ====================================
             CONTACT TABLE
         ==================================== */}
@@ -445,7 +692,7 @@ function EmailContacts({
         {!contactLoading &&
           !contactError &&
           contacts.length > 0 && (
-
+   
             <Box
               sx={{
                 width: "100%",
@@ -454,14 +701,14 @@ function EmailContacts({
                   "auto",
               }}
             >
-
+   
               <Box
                 sx={{
                   minWidth:
                     1050,
                 }}
               >
-
+   
                 {/* ==================================
                     TABLE HEADER
                 ================================== */}
@@ -489,7 +736,7 @@ function EmailContacts({
                     px: 2,
                   }}
                 >
-
+  
                   <Typography
                     sx={{
                       fontSize: 12,
@@ -576,7 +823,7 @@ function EmailContacts({
                   >
                     DOMAIN
                   </Typography>
-
+ 
                 </Box>
 
 
@@ -589,13 +836,13 @@ function EmailContacts({
                     contact,
                     index
                   ) => (
-
+   
                     <Box
                       key={
                         contact.email ||
                         index
                       }
-
+  
                       sx={{
                         display:
                           "grid",
@@ -620,7 +867,7 @@ function EmailContacts({
                         },
                       }}
                     >
-
+ 
                       {/* EMAIL */}
 
                       <Box
@@ -635,7 +882,7 @@ function EmailContacts({
                             0,
                         }}
                       >
-
+  
                         <Avatar
                           sx={{
                             width: 32,
@@ -684,7 +931,7 @@ function EmailContacts({
                             textOverflow:
                               "ellipsis",
                           }}
-
+   
                           title={
                             contact.email
                           }
@@ -692,7 +939,7 @@ function EmailContacts({
                           {contact.email ||
                             "-"}
                         </Typography>
-
+  
                       </Box>
 
 
@@ -714,7 +961,7 @@ function EmailContacts({
                           textOverflow:
                             "ellipsis",
                         }}
-
+  
                         title={
                           contact.name
                         }
@@ -818,7 +1065,7 @@ function EmailContacts({
                       {/* STATUS */}
 
                       <Box>
-
+  
                         <Typography
                           sx={{
                             display:
@@ -846,7 +1093,7 @@ function EmailContacts({
                           {contact.status ||
                             "Active"}
                         </Typography>
-
+ 
                       </Box>
 
 
@@ -868,7 +1115,7 @@ function EmailContacts({
                           textOverflow:
                             "ellipsis",
                         }}
-
+   
                         title={
                           contact.domain
                         }
@@ -876,7 +1123,7 @@ function EmailContacts({
                         {contact.domain ||
                           "-"}
                       </Typography>
-
+  
                     </Box>
                   )
                 )}
@@ -905,7 +1152,7 @@ function EmailContacts({
                     gap: 1,
                   }}
                 >
-
+ 
                   <Typography
                     sx={{
                       fontSize: 12,
@@ -939,16 +1186,17 @@ function EmailContacts({
 
                   <IconButton
                     size="small"
-
+  
                     disabled={
                       contactPage <= 1
                     }
-
+  
                     onClick={
                       handlePreviousPage
                     }
                   >
                     <ChevronLeftIcon />
+  
                   </IconButton>
 
 
@@ -981,28 +1229,28 @@ function EmailContacts({
 
                   <IconButton
                     size="small"
-
+ 
                     disabled={
                       contactPage >=
                       totalContactPages
                     }
-
+ 
                     onClick={
                       handleNextPage
                     }
                   >
                     <ChevronRightIcon />
                   </IconButton>
-
+ 
                 </Box>
-
+ 
               </Box>
-
+ 
             </Box>
           )}
-
+ 
       </Paper>
-
+ 
     </Box>
   );
 }

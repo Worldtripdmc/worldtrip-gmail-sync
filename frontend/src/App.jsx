@@ -252,6 +252,20 @@ function App() {
   };
 
   // ==========================================
+// EXPORT CONTACTS
+// ==========================================
+
+const handleExportContacts = () => {
+  const url =
+    `${API_BASE}/contacts/export`;
+
+  window.open(
+    url,
+    "_blank"
+  );
+};
+
+  // ==========================================
   // CONTACT PAGINATION HANDLERS
   // ==========================================
 
@@ -870,17 +884,31 @@ setSelectedContact(null);
                   px: 1,
                 }}
               >
-                <IconButton>
-                  <PeopleIcon />
-                </IconButton>
+<IconButton>
+  <PeopleIcon />
+</IconButton>
 
-                <IconButton onClick={handleContactRefresh}>
-                  <RefreshIcon />
-                </IconButton>
+<IconButton onClick={handleContactRefresh}>
+  <RefreshIcon />
+</IconButton>
 
-                <IconButton>
-                  <MoreVertIcon />
-                </IconButton>
+<Button
+  variant="outlined"
+  onClick={handleExportContacts}
+  sx={{
+    ml: 1,
+    textTransform: "none",
+    fontSize: 13,
+    fontWeight: 600,
+    borderRadius: "8px",
+  }}
+>
+  Export Contacts
+</Button>
+
+<IconButton>
+  <MoreVertIcon />
+</IconButton>
 
                 <Box sx={{ flexGrow: 1 }} />
 

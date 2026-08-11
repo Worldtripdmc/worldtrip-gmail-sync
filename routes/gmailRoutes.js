@@ -8,7 +8,12 @@ const {
   getDailyEmailReport,
 } = require("../controllers/gmailController");
 
+const {
+  exportEmailContacts,
+} = require("../controllers/gmailExportController");
+
 const router = express.Router();
+
 
 
 // ==========================================
@@ -23,6 +28,15 @@ router.get("/emails", getEmails);
 // ==========================================
 
 router.get("/contacts", getEmailContacts);
+
+// ==========================================
+// EXPORT EMAIL CONTACTS
+// ==========================================
+
+router.get(
+  "/contacts/export",
+  exportEmailContacts
+);
 
 // ==========================================
 // DAILY EMAIL REPORT
