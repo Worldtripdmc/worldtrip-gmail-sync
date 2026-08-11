@@ -11,6 +11,9 @@ import {
   FilterList as FilterListIcon,
   ArrowUpward as ArrowUpwardIcon,
   ArrowDownward as ArrowDownwardIcon,
+  ArrowBack as ArrowBackIcon,
+  Reply as ReplyIcon,
+  OpenInNew as OpenInNewIcon,
 } from "@mui/icons-material";
 
 import {
@@ -52,6 +55,13 @@ const DailyEmailReport = ({
   const [loading, setLoading] = useState(false);
 
   const [error, setError] = useState("");
+
+  // ==========================================
+  // EMAIL DETAIL STATE
+  // ==========================================
+
+  const [selectedEmail, setSelectedEmail] =
+    useState(null);
 
   // ==========================================
   // FILTER STATES
@@ -133,9 +143,12 @@ const DailyEmailReport = ({
 
     setSelectedDate(newDate);
 
-    // Reset filters when date changes
+    setSelectedEmail(null);
+
     setFilter("ALL");
+
     setSearchText("");
+
     setSortOrder("LATEST");
 
     fetchDailyReport(newDate);
@@ -146,6 +159,8 @@ const DailyEmailReport = ({
   // ==========================================
 
   const handleRefresh = () => {
+    setSelectedEmail(null);
+
     fetchDailyReport(selectedDate);
   };
 
@@ -162,6 +177,48 @@ const DailyEmailReport = ({
     }
 
     setFilter(newFilter);
+  };
+
+  // ==========================================
+  // OPEN EMAIL DETAIL
+  // ==========================================
+
+  const handleOpenEmail = (email) => {
+    setSelectedEmail(email);
+  };
+
+  // ==========================================
+  // CLOSE EMAIL DETAIL
+  // ==========================================
+
+  const handleBackToReport = () => {
+    setSelectedEmail(null);
+  };
+
+  // ==========================================
+  // FORMAT DATE & TIME
+  // ==========================================
+
+  const formatDateTime = (date) => {
+    if (!date) {
+      return "";
+    }
+
+    return new Intl.DateTimeFormat(
+      "en-IN",
+      {
+        timeZone: "Asia/Kolkata",
+
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+
+        hour: "2-digit",
+        minute: "2-digit",
+
+        hour12: true,
+      }
+    ).format(new Date(date));
   };
 
   // ==========================================
@@ -326,7 +383,565 @@ const DailyEmailReport = ({
   };
 
   // ==========================================
-  // RENDER
+  // EMAIL DETAIL VIEW
+  // ==========================================
+
+  if (selectedEmail) {
+    return (
+      <Box
+        sx={{
+          p: {
+            xs: 1,
+            md: 2,
+          },
+        }}
+      >
+        <Paper
+          elevation={0}
+          sx={{
+            border:
+              "1px solid #e5e7eb",
+
+            borderRadius: 2,
+
+            backgroundColor:
+              "#ffffff",
+
+            minHeight:
+              "calc(100vh - 100px)",
+          }}
+        >
+          {/* ==================================
+              DETAIL HEADER
+          ================================== */}
+
+          <Box
+            sx={{
+              minHeight: 64,
+
+              display: "flex",
+
+              alignItems: "center",
+
+              px: {
+                xs: 1.5,
+                md: 2,
+              },
+
+              gap: 1,
+            }}
+          >
+            <IconButton
+              onClick={
+                handleBackToReport
+              }
+            >
+              <ArrowBackIcon />
+            </IconButton>
+
+            <Typography
+              sx={{
+                fontSize: 16,
+
+                fontWeight: 600,
+
+                color:
+                  "#202124",
+              }}
+            >
+              Email Details
+            </Typography>
+
+            <Box
+              sx={{
+                flexGrow: 1,
+              }}
+            />
+
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={
+                <ArrowBackIcon />
+              }
+              onClick={
+                handleBackToReport
+              }
+              sx={{
+                textTransform:
+                  "none",
+              }}
+            >
+              Back to Report
+            </Button>
+          </Box>
+
+          <Divider />
+
+          {/* ==================================
+              EMAIL HEADER
+          ================================== */}
+
+          <Box
+            sx={{
+              px: {
+                xs: 2,
+                md: 4,
+              },
+
+              py: 3,
+            }}
+          >
+            {/* SUBJECT */}
+
+            <Typography
+              sx={{
+                fontSize: {
+                  xs: 19,
+                  md: 22,
+                },
+
+                fontWeight: 600,
+
+                color:
+                  "#202124",
+
+                mb: 2,
+              }}
+            >
+              {selectedEmail.subject ||
+                "(No Subject)"}
+            </Typography>
+
+            {/* SENDER */}
+
+            <Box
+              sx={{
+                display: "flex",
+
+                flexDirection: {
+                  xs: "column",
+                  md: "row",
+                },
+
+                gap: {
+                  xs: 1,
+                  md: 3,
+                },
+              }}
+            >
+              <Box
+                sx={{
+                  flex: 1,
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontSize: 11,
+
+                    color:
+                      "#80868b",
+
+                    mb: 0.3,
+                  }}
+                >
+                  From
+                </Typography>
+
+                <Typography
+                  sx={{
+                    fontSize: 14,
+
+                    fontWeight: 600,
+
+                    color:
+                      "#202124",
+                  }}
+                >
+                  {selectedEmail.name ||
+                    selectedEmail.email}
+                </Typography>
+
+                <Typography
+                  sx={{
+                    fontSize: 13,
+
+                    color:
+                      "#5f6368",
+
+                    mt: 0.2,
+                  }}
+                >
+                  {selectedEmail.email}
+                </Typography>
+              </Box>
+
+              {/* DATE */}
+
+              <Box>
+                <Typography
+                  sx={{
+                    fontSize: 11,
+
+                    color:
+                      "#80868b",
+
+                    mb: 0.3,
+                  }}
+                >
+                  Date & Time
+                </Typography>
+
+                <Typography
+                  sx={{
+                    fontSize: 13,
+
+                    color:
+                      "#3c4043",
+                  }}
+                >
+                  {formatDateTime(
+                    selectedEmail.date
+                  )}
+                </Typography>
+              </Box>
+            </Box>
+
+            <Divider
+              sx={{
+                my: 2.5,
+              }}
+            />
+
+            {/* ==================================
+                RECIPIENT DETAILS
+            ================================== */}
+
+            <Box
+              sx={{
+                display: "grid",
+
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  md: "1fr 1fr",
+                },
+
+                gap: 2,
+              }}
+            >
+              {/* TO */}
+
+              <Box>
+                <Typography
+                  sx={{
+                    fontSize: 11,
+
+                    color:
+                      "#80868b",
+
+                    mb: 0.5,
+                  }}
+                >
+                  To
+                </Typography>
+
+                <Typography
+                  sx={{
+                    fontSize: 13,
+
+                    color:
+                      "#3c4043",
+
+                    wordBreak:
+                      "break-word",
+                  }}
+                >
+                  {selectedEmail.to ||
+                    "Not available"}
+                </Typography>
+              </Box>
+
+              {/* CC */}
+
+              <Box>
+                <Typography
+                  sx={{
+                    fontSize: 11,
+
+                    color:
+                      "#80868b",
+
+                    mb: 0.5,
+                  }}
+                >
+                  CC
+                </Typography>
+
+                <Typography
+                  sx={{
+                    fontSize: 13,
+
+                    color:
+                      "#3c4043",
+
+                    wordBreak:
+                      "break-word",
+                  }}
+                >
+                  {selectedEmail.cc ||
+                    "None"}
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* ==================================
+                STATUS
+            ================================== */}
+
+            <Box
+              sx={{
+                display: "flex",
+
+                gap: 1,
+
+                mt: 2,
+
+                flexWrap:
+                  "wrap",
+              }}
+            >
+              <Box
+                sx={{
+                  px: 1.2,
+
+                  py: 0.5,
+
+                  borderRadius: 1,
+
+                  backgroundColor:
+                    "#e8f0fe",
+
+                  color:
+                    "#1967d2",
+
+                  fontSize: 11,
+
+                  fontWeight: 700,
+                }}
+              >
+                EMAIL:{" "}
+                {selectedEmail.emailStatus ||
+                  "NEW"}
+              </Box>
+
+              <Box
+                sx={{
+                  px: 1.2,
+
+                  py: 0.5,
+
+                  borderRadius: 1,
+
+                  backgroundColor:
+                    selectedEmail.contactStatus ===
+                    "NEW"
+                      ? "#e6f4ea"
+                      : "#f1f3f4",
+
+                  color:
+                    selectedEmail.contactStatus ===
+                    "NEW"
+                      ? "#188038"
+                      : "#5f6368",
+
+                  fontSize: 11,
+
+                  fontWeight: 700,
+                }}
+              >
+                CONTACT:{" "}
+                {selectedEmail.contactStatus ||
+                  "EXISTING"}
+              </Box>
+
+              {selectedEmail.domain && (
+                <Box
+                  sx={{
+                    px: 1.2,
+
+                    py: 0.5,
+
+                    borderRadius: 1,
+
+                    backgroundColor:
+                      "#f1f3f4",
+
+                    color:
+                      "#5f6368",
+
+                    fontSize: 11,
+
+                    fontWeight: 600,
+                  }}
+                >
+                  {selectedEmail.domain}
+                </Box>
+              )}
+            </Box>
+          </Box>
+
+          <Divider />
+
+          {/* ==================================
+              EMAIL CONTENT
+          ================================== */}
+
+          <Box
+            sx={{
+              px: {
+                xs: 2,
+                md: 4,
+              },
+
+              py: 3,
+            }}
+          >
+            <Typography
+              sx={{
+                fontSize: 14,
+
+                fontWeight: 600,
+
+                color:
+                  "#202124",
+
+                mb: 1.5,
+              }}
+            >
+              Email Content
+            </Typography>
+
+            <Paper
+              elevation={0}
+              sx={{
+                border:
+                  "1px solid #e5e7eb",
+
+                borderRadius: 2,
+
+                p: {
+                  xs: 2,
+                  md: 3,
+                },
+
+                backgroundColor:
+                  "#fafafa",
+              }}
+            >
+              <Typography
+                sx={{
+                  fontSize: 14,
+
+                  lineHeight: 1.7,
+
+                  color:
+                    "#3c4043",
+
+                  whiteSpace:
+                    "pre-wrap",
+
+                  wordBreak:
+                    "break-word",
+                }}
+              >
+                {selectedEmail.body ||
+                  selectedEmail.snippet ||
+                  "Email body is not available yet."}
+              </Typography>
+            </Paper>
+          </Box>
+
+          {/* ==================================
+              TECHNICAL DETAILS
+          ================================== */}
+
+          <Box
+            sx={{
+              px: {
+                xs: 2,
+                md: 4,
+              },
+
+              pb: 3,
+            }}
+          >
+            <Typography
+              sx={{
+                fontSize: 13,
+
+                fontWeight: 600,
+
+                color:
+                  "#5f6368",
+
+                mb: 1,
+              }}
+            >
+              Email Information
+            </Typography>
+
+            <Box
+              sx={{
+                display: "grid",
+
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  md: "1fr 1fr",
+                },
+
+                gap: 1,
+              }}
+            >
+              <Typography
+                sx={{
+                  fontSize: 12,
+
+                  color:
+                    "#80868b",
+
+                  wordBreak:
+                    "break-all",
+                }}
+              >
+                Gmail ID:{" "}
+                {selectedEmail.gmailId ||
+                  "N/A"}
+              </Typography>
+
+              <Typography
+                sx={{
+                  fontSize: 12,
+
+                  color:
+                    "#80868b",
+
+                  wordBreak:
+                    "break-all",
+                }}
+              >
+                Thread ID:{" "}
+                {selectedEmail.threadId ||
+                  "N/A"}
+              </Typography>
+            </Box>
+          </Box>
+        </Paper>
+      </Box>
+    );
+  }
+
+  // ==========================================
+  // MAIN REPORT VIEW
   // ==========================================
 
   return (
@@ -390,8 +1005,11 @@ const DailyEmailReport = ({
           <Typography
             sx={{
               fontSize: 16,
+
               fontWeight: 600,
+
               color: "#202124",
+
               whiteSpace:
                 "nowrap",
             }}
@@ -570,9 +1188,7 @@ const DailyEmailReport = ({
           !error &&
           report && (
             <Box>
-              {/* ==============================
-                  REPORT DATE
-              ============================== */}
+              {/* REPORT DATE */}
 
               <Box
                 sx={{
@@ -611,9 +1227,7 @@ const DailyEmailReport = ({
 
               <Divider />
 
-              {/* ==============================
-                  SUMMARY CARDS
-              ============================== */}
+              {/* SUMMARY */}
 
               <Box
                 sx={{
@@ -633,7 +1247,7 @@ const DailyEmailReport = ({
                   },
                 }}
               >
-                {/* TOTAL EMAILS */}
+                {/* TOTAL */}
 
                 <Paper
                   elevation={0}
@@ -681,7 +1295,7 @@ const DailyEmailReport = ({
                   </Typography>
                 </Paper>
 
-                {/* UNIQUE CONTACTS */}
+                {/* UNIQUE */}
 
                 <Paper
                   elevation={0}
@@ -730,7 +1344,7 @@ const DailyEmailReport = ({
                   </Typography>
                 </Paper>
 
-                {/* NEW CONTACTS */}
+                {/* NEW */}
 
                 <Paper
                   elevation={0}
@@ -779,7 +1393,7 @@ const DailyEmailReport = ({
                   </Typography>
                 </Paper>
 
-                {/* EXISTING CONTACTS */}
+                {/* EXISTING */}
 
                 <Paper
                   elevation={0}
@@ -831,9 +1445,7 @@ const DailyEmailReport = ({
 
               <Divider />
 
-              {/* ==============================
-                  FILTER / SEARCH TOOLBAR
-              ============================== */}
+              {/* FILTER */}
 
               <Box
                 sx={{
@@ -859,8 +1471,6 @@ const DailyEmailReport = ({
                   },
                 }}
               >
-                {/* FILTER ICON */}
-
                 <FilterListIcon
                   sx={{
                     color:
@@ -872,8 +1482,6 @@ const DailyEmailReport = ({
                     },
                   }}
                 />
-
-                {/* CONTACT FILTER */}
 
                 <ToggleButtonGroup
                   value={filter}
@@ -908,8 +1516,6 @@ const DailyEmailReport = ({
                     Existing
                   </ToggleButton>
                 </ToggleButtonGroup>
-
-                {/* SEARCH */}
 
                 <TextField
                   size="small"
@@ -948,8 +1554,6 @@ const DailyEmailReport = ({
                   }}
                 />
 
-                {/* CLEAR */}
-
                 {searchText && (
                   <Button
                     size="small"
@@ -967,8 +1571,6 @@ const DailyEmailReport = ({
                     Clear
                   </Button>
                 )}
-
-                {/* SORT */}
 
                 <Button
                   variant="outlined"
@@ -1008,9 +1610,7 @@ const DailyEmailReport = ({
 
               <Divider />
 
-              {/* ==============================
-                  EMAIL LIST HEADER
-              ============================== */}
+              {/* LIST HEADER */}
 
               <Box
                 sx={{
@@ -1063,9 +1663,7 @@ const DailyEmailReport = ({
 
               <Divider />
 
-              {/* ==============================
-                  NO EMAILS
-              ============================== */}
+              {/* NO EMAILS */}
 
               {reportData.length ===
                 0 && (
@@ -1129,9 +1727,7 @@ const DailyEmailReport = ({
                 </Box>
               )}
 
-              {/* ==============================
-                  FILTERED RESULT EMPTY
-              ============================== */}
+              {/* FILTER EMPTY */}
 
               {reportData.length >
                 0 &&
@@ -1197,9 +1793,7 @@ const DailyEmailReport = ({
                   </Box>
                 )}
 
-              {/* ==============================
-                  EMAIL LIST
-              ============================== */}
+              {/* EMAIL LIST */}
 
               {filteredEmails.length >
                 0 && (
@@ -1215,6 +1809,11 @@ const DailyEmailReport = ({
                           item.emailId ||
                           `${item.email}-${index}`
                         }
+                        onClick={() =>
+                          handleOpenEmail(
+                            item
+                          )
+                        }
                         sx={{
                           px: {
                             xs: 2,
@@ -1225,6 +1824,9 @@ const DailyEmailReport = ({
 
                           borderBottom:
                             "1px solid #f1f3f4",
+
+                          cursor:
+                            "pointer",
 
                           "&:hover":
                             {
@@ -1400,8 +2002,6 @@ const DailyEmailReport = ({
                             }
                           </Typography>
 
-                          {/* EMAIL STATUS */}
-
                           <Box
                             sx={{
                               px: 1,
@@ -1426,8 +2026,6 @@ const DailyEmailReport = ({
                             {item.emailStatus ||
                               "NEW"}
                           </Box>
-
-                          {/* CONTACT STATUS */}
 
                           <Box
                             sx={{

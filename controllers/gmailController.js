@@ -1,4 +1,5 @@
 const Email = require("../models/Email");
+const GmailMailbox = require("../models/GmailMailbox");
 const { syncEmails } = require("../services/gmailSyncService");
 
 // ==========================================
@@ -10,7 +11,9 @@ const extractEmail = (value = "") => {
     /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i
   );
 
-  return match ? match[0].toLowerCase() : "";
+  return match
+    ? match[0].toLowerCase()
+    : "";
 };
 
 // ==========================================
@@ -18,23 +21,31 @@ const extractEmail = (value = "") => {
 // ==========================================
 
 const extractName = (value = "") => {
-  const text = String(value || "").trim();
+  const text =
+    String(value || "").trim();
 
   if (!text) {
     return "";
   }
 
-  const emailMatch = text.match(
-    /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i
-  );
+  const emailMatch =
+    text.match(
+      /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i
+    );
 
   if (!emailMatch) {
     return text;
   }
 
   return text
-    .replace(emailMatch[0], "")
-    .replace(/[<>"]/g, "")
+    .replace(
+      emailMatch[0],
+      ""
+    )
+    .replace(
+      /[<>"]/g,
+      ""
+    )
     .trim();
 };
 
@@ -43,19 +54,28 @@ const extractName = (value = "") => {
 // ==========================================
 
 const getDomain = (email = "") => {
-  const parts = String(email)
-    .toLowerCase()
-    .split("@");
+  const parts =
+    String(email)
+      .toLowerCase()
+      .split("@");
 
-  return parts.length === 2 ? parts[1] : "";
+  return parts.length === 2
+    ? parts[1]
+    : "";
 };
 
 // ==========================================
 // INDIA DATE RANGE
 // ==========================================
 
-const getIndiaDayRange = (dateString) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+const getIndiaDayRange = (
+  dateString
+) => {
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(
+      dateString
+    )
+  ) {
     return null;
   }
 
@@ -63,7 +83,11 @@ const getIndiaDayRange = (dateString) => {
     `${dateString}T00:00:00+05:30`
   );
 
-  if (Number.isNaN(start.getTime())) {
+  if (
+    Number.isNaN(
+      start.getTime()
+    )
+  ) {
     return null;
   }
 
@@ -79,30 +103,70 @@ const getIndiaDayRange = (dateString) => {
 };
 
 // ==========================================
-// GET EMAILS FROM MONGODB
+// GET EMAILS
+// ==========================================
+//
+// GET:
+// /api/gmail/emails
+//
+// GET:
+// /api/gmail/emails?mailbox=avdhesh@worldtripdmc.com
+//
+// GET:
+// /api/gmail/emails?page=1&limit=50
+//
 // ==========================================
 
-const getEmails = async (req, res) => {
+const getEmails = async (
+  req,
+  res
+) => {
   try {
     const page = Math.max(
-      parseInt(req.query.page) || 1,
+      parseInt(
+        req.query.page
+      ) || 1,
       1
     );
 
     const limit = Math.min(
       Math.max(
-        parseInt(req.query.limit) || 50,
+        parseInt(
+          req.query.limit
+        ) || 50,
         1
       ),
       100
     );
 
-    const skip = (page - 1) * limit;
+    const skip =
+      (page - 1) *
+      limit;
 
     const search =
-      (req.query.search || "").trim();
+      (
+        req.query.search ||
+        ""
+      ).trim();
+
+    const mailbox =
+      (
+        req.query.mailbox ||
+        ""
+      )
+        .trim()
+        .toLowerCase();
 
     const query = {};
+
+    // ======================================
+    // MAILBOX FILTER
+    // ======================================
+
+    if (mailbox) {
+      query.mailbox =
+        mailbox;
+    }
 
     // ======================================
     // SEARCH
@@ -116,18 +180,21 @@ const getEmails = async (req, res) => {
             $options: "i",
           },
         },
+
         {
           to: {
             $regex: search,
             $options: "i",
           },
         },
+
         {
           subject: {
             $regex: search,
             $options: "i",
           },
         },
+
         {
           snippet: {
             $regex: search,
@@ -142,7 +209,9 @@ const getEmails = async (req, res) => {
     // ======================================
 
     const total =
-      await Email.countDocuments(query);
+      await Email.countDocuments(
+        query
+      );
 
     // ======================================
     // EMAILS
@@ -150,13 +219,21 @@ const getEmails = async (req, res) => {
 
     const emails =
       await Email.find(query)
-        .sort({ date: -1 })
+        .sort({
+          date: -1,
+        })
         .skip(skip)
         .limit(limit)
         .lean();
 
+    // ======================================
+    // TOTAL PAGES
+    // ======================================
+
     const totalPages =
-      Math.ceil(total / limit);
+      Math.ceil(
+        total / limit
+      );
 
     // ======================================
     // RESPONSE
@@ -165,6 +242,9 @@ const getEmails = async (req, res) => {
     res.json({
       success: true,
 
+      mailbox:
+        mailbox || "ALL",
+
       data: emails,
 
       pagination: {
@@ -172,8 +252,11 @@ const getEmails = async (req, res) => {
         limit,
         total,
         totalPages,
+
         hasNextPage:
-          page < totalPages,
+          page <
+          totalPages,
+
         hasPreviousPage:
           page > 1,
       },
@@ -186,7 +269,8 @@ const getEmails = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: error.message,
+      message:
+        error.message,
     });
   }
 };
@@ -194,29 +278,99 @@ const getEmails = async (req, res) => {
 // ==========================================
 // GET EMAIL CONTACT DATABASE
 // ==========================================
+//
+// IMPORTANT:
+//
+// Old implementation used:
+//
+// MongoDB $sort
+// MongoDB $group
+// MongoDB $sort
+//
+// With 333K+ emails this caused:
+//
+// Sort exceeded memory limit
+//
+// This implementation uses a MongoDB
+// cursor and Node.js Map.
+//
+// No MongoDB aggregation.
+// No MongoDB sort.
+// No MongoDB group.
+//
+// Pagination is applied AFTER unique
+// contacts are generated.
+//
+// ==========================================
 
 const getEmailContacts = async (
   req,
   res
 ) => {
   try {
-    const search =
-      (req.query.search || "").trim();
+    // ======================================
+    // PAGINATION
+    // ======================================
 
-    const matchStage = {};
+    const page = Math.max(
+      parseInt(
+        req.query.page
+      ) || 1,
+      1
+    );
+
+    const limit = Math.min(
+      Math.max(
+        parseInt(
+          req.query.limit
+        ) || 50,
+        1
+      ),
+      100
+    );
+
+    const search =
+      (
+        req.query.search ||
+        ""
+      ).trim();
+
+    const mailbox =
+      (
+        req.query.mailbox ||
+        ""
+      )
+        .trim()
+        .toLowerCase();
+
+    // ======================================
+    // QUERY
+    // ======================================
+
+    const query = {};
+
+    // ======================================
+    // MAILBOX
+    // ======================================
+
+    if (mailbox) {
+      query.mailbox =
+        mailbox;
+    }
 
     // ======================================
     // SEARCH
     // ======================================
 
     if (search) {
-      matchStage.$or = [
+      query.$or = [
         {
           from: {
             $regex: search,
             $options: "i",
           },
         },
+
         {
           to: {
             $regex: search,
@@ -227,186 +381,255 @@ const getEmailContacts = async (
     }
 
     // ======================================
-    // CONTACT AGGREGATION
+    // CONTACT MAP
     // ======================================
 
-    const contacts =
-      await Email.aggregate([
-        {
-          $match: matchStage,
-        },
+    const contactMap =
+      new Map();
 
-        // ----------------------------------
-        // EXTRACT EMAIL FROM FROM FIELD
-        // ----------------------------------
+    // ======================================
+    // MONGODB CURSOR
+    // ======================================
+    //
+    // Only required fields are read.
+    //
+    // NO aggregation.
+    // NO sort.
+    // NO group.
+    //
+    // ======================================
 
-        {
-          $addFields: {
-            senderEmail: {
-              $let: {
-                vars: {
-                  emailMatch: {
-                    $regexFind: {
-                      input: {
-                        $ifNull: [
-                          "$from",
-                          "",
-                        ],
-                      },
+    const cursor =
+      Email.find(query)
+        .select({
+          from: 1,
+          date: 1,
+        })
+        .lean()
+        .cursor();
 
-                      regex:
-                        /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i,
-                    },
-                  },
-                },
+    let scanned = 0;
 
-                in: {
-                  $ifNull: [
-                    "$$emailMatch.match",
-                    "$from",
-                  ],
-                },
-              },
-            },
-          },
-        },
+    // ======================================
+    // PROCESS EMAILS
+    // ======================================
 
-        // ----------------------------------
-        // REMOVE EMPTY EMAILS
-        // ----------------------------------
+    for await (
+      const email of cursor
+    ) {
+      scanned++;
 
-        {
-          $match: {
-            senderEmail: {
-              $nin: ["", null],
-            },
-          },
-        },
+      const senderEmail =
+        extractEmail(
+          email.from || ""
+        );
 
-        // ----------------------------------
-        // LATEST EMAIL FIRST
-        // ----------------------------------
+      // ------------------------------------
+      // INVALID EMAIL
+      // ------------------------------------
 
-        {
-          $sort: {
-            date: -1,
-          },
-        },
+      if (!senderEmail) {
+        continue;
+      }
 
-        // ----------------------------------
-        // GROUP BY EMAIL
-        // ----------------------------------
+      const normalizedEmail =
+        senderEmail.toLowerCase();
 
-        {
-          $group: {
-            _id: {
-              $toLower:
-                "$senderEmail",
-            },
+      const emailDate =
+        email.date
+          ? new Date(
+              email.date
+            )
+          : null;
 
-            firstEmail: {
-              $min: "$date",
-            },
+      const senderName =
+        extractName(
+          email.from || ""
+        );
 
-            lastEmail: {
-              $max: "$date",
-            },
+      // ====================================
+      // NEW CONTACT
+      // ====================================
 
-            totalEmails: {
-              $sum: 1,
-            },
+      if (
+        !contactMap.has(
+          normalizedEmail
+        )
+      ) {
+        contactMap.set(
+          normalizedEmail,
+          {
+            email:
+              normalizedEmail,
 
-            latestFrom: {
-              $first: "$from",
-            },
-          },
-        },
+            name:
+              senderName ||
+              normalizedEmail,
 
-        // ----------------------------------
-        // SORT CONTACTS
-        // ----------------------------------
+            firstEmail:
+              emailDate,
 
-        {
-          $sort: {
-            lastEmail: -1,
-          },
-        },
-
-        // ----------------------------------
-        // FINAL FORMAT
-        // ----------------------------------
-
-        {
-          $project: {
-            _id: 0,
-
-            email: "$_id",
-
-            name: {
-              $cond: [
-                {
-                  $regexMatch: {
-                    input: {
-                      $ifNull: [
-                        "$latestFrom",
-                        "",
-                      ],
-                    },
-
-                    regex: /</,
-                  },
-                },
-
-                {
-                  $trim: {
-                    input: {
-                      $arrayElemAt: [
-                        {
-                          $split: [
-                            "$latestFrom",
-                            "<",
-                          ],
-                        },
-
-                        0,
-                      ],
-                    },
-                  },
-                },
-
-                "$latestFrom",
-              ],
-            },
-
-            firstEmail: 1,
-
-            lastEmail: 1,
+            lastEmail:
+              emailDate,
 
             totalEmails: 1,
 
-            source: {
-              $literal: "Gmail",
-            },
+            source:
+              "Gmail",
 
-            status: {
-              $literal: "Active",
-            },
+            status:
+              "Active",
 
-            domain: {
-              $arrayElemAt: [
-                {
-                  $split: [
-                    "$_id",
-                    "@",
-                  ],
-                },
+            domain:
+              getDomain(
+                normalizedEmail
+              ),
+          }
+        );
 
-                1,
-              ],
-            },
-          },
-        },
-      ]);
+        continue;
+      }
+
+      // ====================================
+      // EXISTING CONTACT
+      // ====================================
+
+      const contact =
+        contactMap.get(
+          normalizedEmail
+        );
+
+      contact.totalEmails++;
+
+      // ====================================
+      // FIRST EMAIL
+      // ====================================
+
+      if (
+        emailDate &&
+        (
+          !contact.firstEmail ||
+          emailDate <
+            contact.firstEmail
+        )
+      ) {
+        contact.firstEmail =
+          emailDate;
+      }
+
+      // ====================================
+      // LAST EMAIL
+      // ====================================
+
+      if (
+        emailDate &&
+        (
+          !contact.lastEmail ||
+          emailDate >
+            contact.lastEmail
+        )
+      ) {
+        contact.lastEmail =
+          emailDate;
+
+        if (senderName) {
+          contact.name =
+            senderName;
+        }
+      }
+    }
+
+    // ======================================
+    // CONTACT ARRAY
+    // ======================================
+
+    const allContacts =
+      Array.from(
+        contactMap.values()
+      );
+
+    // ======================================
+    // SORT CONTACTS IN NODE.JS
+    // ======================================
+    //
+    // MongoDB sorting is NOT used.
+    //
+    // Only unique contacts are sorted here.
+    //
+    // ======================================
+
+    allContacts.sort(
+      (a, b) => {
+        const dateA =
+          a.lastEmail
+            ? new Date(
+                a.lastEmail
+              ).getTime()
+            : 0;
+
+        const dateB =
+          b.lastEmail
+            ? new Date(
+                b.lastEmail
+              ).getTime()
+            : 0;
+
+        if (
+          dateB !== dateA
+        ) {
+          return (
+            dateB -
+            dateA
+          );
+        }
+
+        return a.email.localeCompare(
+          b.email
+        );
+      }
+    );
+
+    // ======================================
+    // TOTAL CONTACTS
+    // ======================================
+
+    const total =
+      allContacts.length;
+
+    const totalPages =
+      Math.ceil(
+        total / limit
+      );
+
+    // ======================================
+    // PAGINATION SLICE
+    // ======================================
+
+    const startIndex =
+      (page - 1) *
+      limit;
+
+    const contacts =
+      allContacts.slice(
+        startIndex,
+        startIndex + limit
+      );
+
+    // ======================================
+    // LOG
+    // ======================================
+
+    console.log(
+      `📇 Contacts scanned: ${scanned}`
+    );
+
+    console.log(
+      `📇 Unique contacts: ${total}`
+    );
+
+    console.log(
+      `📄 Contacts page: ${page}/${totalPages}`
+    );
 
     // ======================================
     // RESPONSE
@@ -415,9 +638,31 @@ const getEmailContacts = async (
     res.json({
       success: true,
 
-      count: contacts.length,
+      mailbox:
+        mailbox || "ALL",
 
-      data: contacts,
+      count:
+        contacts.length,
+
+      data:
+        contacts,
+
+      pagination: {
+        page,
+
+        limit,
+
+        total,
+
+        totalPages,
+
+        hasNextPage:
+          page <
+          totalPages,
+
+        hasPreviousPage:
+          page > 1,
+      },
     });
   } catch (error) {
     console.error(
@@ -427,7 +672,10 @@ const getEmailContacts = async (
 
     res.status(500).json({
       success: false,
-      message: error.message,
+
+      message:
+        error.message ||
+        "Failed to load email contacts",
     });
   }
 };
@@ -441,13 +689,19 @@ const getEmailById = async (
   res
 ) => {
   try {
-    const { id } = req.params;
+    const {
+      id,
+    } = req.params;
 
     const email =
-      await Email.findById(id).lean();
+      await Email.findById(
+        id
+      ).lean();
 
     if (!email) {
-      return res.status(404).json({
+      return res.status(
+        404
+      ).json({
         success: false,
 
         message:
@@ -468,7 +722,9 @@ const getEmailById = async (
 
     res.status(500).json({
       success: false,
-      message: error.message,
+
+      message:
+        error.message,
     });
   }
 };
@@ -478,10 +734,13 @@ const getEmailById = async (
 // ==========================================
 //
 // GET:
+// /api/gmail/daily-report
+//
+// GET:
 // /api/gmail/daily-report?date=2026-08-09
 //
 // NEW CONTACT:
-// Sender se selected date se pehle
+// Sender ka selected date se pehle
 // koi received email nahi mila.
 //
 // EXISTING CONTACT:
@@ -489,441 +748,532 @@ const getEmailById = async (
 // received email already available hai.
 //
 // SENT emails report mein include nahi honge.
+//
 // ==========================================
 
-const getDailyEmailReport = async (
-  req,
-  res
-) => {
-  try {
-    // ======================================
-    // DATE
-    // ======================================
+const getDailyEmailReport =
+  async (
+    req,
+    res
+  ) => {
+    try {
+      // ====================================
+      // DATE
+      // ====================================
 
-    const requestedDate =
-      (req.query.date || "").trim();
+      const requestedDate =
+        (
+          req.query.date ||
+          ""
+        ).trim();
 
-    const dateString =
-      requestedDate ||
-      new Intl.DateTimeFormat(
-        "en-CA",
-        {
-          timeZone:
-            "Asia/Kolkata",
-        }
-      ).format(new Date());
-
-    // ======================================
-    // INDIA DATE RANGE
-    // ======================================
-
-    const range =
-      getIndiaDayRange(dateString);
-
-    if (!range) {
-      return res.status(400).json({
-        success: false,
-
-        message:
-          "Invalid date. Use YYYY-MM-DD format.",
-      });
-    }
-
-    const {
-      start,
-      end,
-    } = range;
-
-    // ======================================
-    // GET RECEIVED EMAILS FOR SELECTED DAY
-    // ======================================
-
-    const dailyEmails =
-      await Email.find({
-        date: {
-          $gte: start,
-          $lt: end,
-        },
-
-        labels: {
-          $nin: ["SENT"],
-        },
-      })
-        .sort({
-          date: 1,
-        })
-        .lean();
-
-    // ======================================
-    // NORMALIZE SENDERS
-    // ======================================
-
-    const normalizedEmails =
-      dailyEmails
-        .map((email) => {
-          const senderEmail =
-            extractEmail(
-              email.from
-            );
-
-          return {
-            ...email,
-
-            senderEmail,
-
-            senderName:
-              extractName(
-                email.from
-              ),
-          };
-        })
-        .filter(
-          (email) =>
-            email.senderEmail
+      const dateString =
+        requestedDate ||
+        new Intl.DateTimeFormat(
+          "en-CA",
+          {
+            timeZone:
+              "Asia/Kolkata",
+          }
+        ).format(
+          new Date()
         );
 
-    // ======================================
-    // UNIQUE SENDERS FOR THIS DAY
-    // ======================================
+      // ====================================
+      // DATE RANGE
+      // ====================================
 
-    const uniqueSenders = [
-      ...new Set(
-        normalizedEmails.map(
-          (email) =>
-            email.senderEmail
-        )
-      ),
-    ];
+      const range =
+        getIndiaDayRange(
+          dateString
+        );
 
-    // ======================================
-    // FIND PREVIOUS SENDERS
-    // ======================================
+      if (!range) {
+        return res.status(
+          400
+        ).json({
+          success: false,
 
-    const previousSenderRows =
-      uniqueSenders.length
-        ? await Email.aggregate([
-            {
-              $match: {
-                date: {
-                  $lt: start,
-                },
+          message:
+            "Invalid date. Use YYYY-MM-DD format.",
+        });
+      }
 
-                labels: {
-                  $nin: ["SENT"],
-                },
-              },
-            },
+      const {
+        start,
+        end,
+      } = range;
 
-            // --------------------------------
-            // EXTRACT SENDER EMAIL
-            // --------------------------------
+      // ====================================
+      // DAILY EMAILS
+      // ====================================
 
-            {
-              $addFields: {
-                senderEmail: {
-                  $let: {
-                    vars: {
-                      emailMatch: {
-                        $regexFind: {
-                          input: {
-                            $ifNull: [
-                              "$from",
-                              "",
-                            ],
-                          },
+      const dailyEmails =
+        await Email.find({
+          date: {
+            $gte: start,
+            $lt: end,
+          },
 
-                          regex:
-                            /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i,
-                        },
-                      },
+          labels: {
+            $nin: [
+              "SENT",
+            ],
+          },
+        })
+          .sort({
+            date: 1,
+          })
+          .lean();
+
+      // ====================================
+      // NORMALIZE SENDERS
+      // ====================================
+
+      const normalizedEmails =
+        dailyEmails
+          .map(
+            (email) => {
+              const senderEmail =
+                extractEmail(
+                  email.from
+                );
+
+              return {
+                ...email,
+
+                senderEmail,
+
+                senderName:
+                  extractName(
+                    email.from
+                  ),
+              };
+            }
+          )
+          .filter(
+            (email) =>
+              email.senderEmail
+          );
+
+      // ====================================
+      // UNIQUE SENDERS
+      // ====================================
+
+      const uniqueSenders =
+        [
+          ...new Set(
+            normalizedEmails.map(
+              (email) =>
+                email.senderEmail
+            )
+          ),
+        ];
+
+      // ====================================
+      // PREVIOUS SENDERS
+      // ====================================
+
+      const previousSenderRows =
+        uniqueSenders.length
+          ? await Email.aggregate(
+              [
+                {
+                  $match: {
+                    date: {
+                      $lt: start,
                     },
 
-                    in: {
-                      $toLower: {
-                        $ifNull: [
-                          "$$emailMatch.match",
-                          "",
-                        ],
-                      },
+                    labels: {
+                      $nin: [
+                        "SENT",
+                      ],
                     },
                   },
                 },
-              },
-            },
 
-            // --------------------------------
-            // MATCH TODAY'S SENDERS
-            // --------------------------------
-
-            {
-              $match: {
-                senderEmail: {
-                  $in: uniqueSenders,
+                {
+                  $project: {
+                    from: 1,
+                  },
                 },
-              },
-            },
 
-            // --------------------------------
-            // GROUP
-            // --------------------------------
+                {
+                  $set: {
+                    senderEmail:
+                      {
+                        $let: {
+                          vars: {
+                            emailMatch:
+                              {
+                                $regexFind:
+                                  {
+                                    input:
+                                      {
+                                        $ifNull:
+                                          [
+                                            "$from",
+                                            "",
+                                          ],
+                                      },
 
-            {
-              $group: {
-                _id:
-                  "$senderEmail",
-              },
-            },
-          ])
-        : [];
+                                    regex:
+                                      /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i,
+                                  },
+                              },
+                          },
 
-    const previousSenders =
-      new Set(
-        previousSenderRows.map(
-          (row) =>
-            row._id
-        )
-      );
+                          in: {
+                            $toLower:
+                              {
+                                $ifNull:
+                                  [
+                                    "$$emailMatch.match",
+                                    "",
+                                  ],
+                              },
+                          },
+                        },
+                      },
+                  },
+                },
 
-    // ======================================
-    // BUILD DAILY REPORT
-    // ======================================
+                {
+                  $match: {
+                    senderEmail: {
+                      $in:
+                        uniqueSenders,
+                    },
+                  },
+                },
 
-    const reportData =
-      normalizedEmails.map(
-        (email) => {
-          const contactStatus =
-            previousSenders.has(
-              email.senderEmail
+                {
+                  $group: {
+                    _id:
+                      "$senderEmail",
+                  },
+                },
+              ]
             )
-              ? "EXISTING"
-              : "NEW";
+          : [];
 
-          return {
-            // ------------------------------
-            // CONTACT
-            // ------------------------------
+      // ====================================
+      // PREVIOUS SENDER SET
+      // ====================================
 
-            email:
-              email.senderEmail,
+      const previousSenders =
+        new Set(
+          previousSenderRows.map(
+            (row) =>
+              row._id
+          )
+        );
 
-            name:
-              email.senderName ||
-              email.senderEmail,
+      // ====================================
+      // BUILD REPORT
+      // ====================================
 
-            domain:
-              getDomain(
+      const reportData =
+        normalizedEmails.map(
+          (email) => {
+            const contactStatus =
+              previousSenders.has(
                 email.senderEmail
-              ),
+              )
+                ? "EXISTING"
+                : "NEW";
 
-            // ------------------------------
-            // EMAIL DETAILS
-            // ------------------------------
+            return {
+              // --------------------------
+              // CONTACT
+              // --------------------------
 
-            date:
-              email.date,
+              email:
+                email.senderEmail,
 
-            time: email.date
-              ? new Intl.DateTimeFormat(
-                  "en-IN",
-                  {
-                    timeZone:
-                      "Asia/Kolkata",
+              name:
+                email.senderName ||
+                email.senderEmail,
 
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
+              domain:
+                getDomain(
+                  email.senderEmail
+                ),
 
-                    hour: "2-digit",
-                    minute: "2-digit",
+              // --------------------------
+              // EMAIL DETAILS
+              // --------------------------
 
-                    hour12: true,
-                  }
-                ).format(
-                  new Date(
-                    email.date
-                  )
-                )
-              : "",
+              date:
+                email.date,
 
-            subject:
-              email.subject || "",
+              time:
+                email.date
+                  ? new Intl.DateTimeFormat(
+                      "en-IN",
+                      {
+                        timeZone:
+                          "Asia/Kolkata",
 
-            snippet:
-              email.snippet || "",
+                        day:
+                          "2-digit",
 
-            gmailId:
-              email.gmailId,
+                        month:
+                          "short",
 
-            threadId:
-              email.threadId,
+                        year:
+                          "numeric",
 
-            // ------------------------------
-            // STATUS
-            // ------------------------------
+                        hour:
+                          "2-digit",
 
-            emailStatus:
-              "NEW",
+                        minute:
+                          "2-digit",
 
-            contactStatus,
+                        hour12:
+                          true,
+                      }
+                    ).format(
+                      new Date(
+                        email.date
+                      )
+                    )
+                  : "",
 
-            // ------------------------------
-            // SOURCE
-            // ------------------------------
+              subject:
+                email.subject ||
+                "",
 
-            source:
-              "Gmail",
-          };
-        }
+              snippet:
+                email.snippet ||
+                "",
+
+              gmailId:
+                email.gmailId,
+
+              threadId:
+                email.threadId,
+
+              // --------------------------
+              // STATUS
+              // --------------------------
+
+              emailStatus:
+                "NEW",
+
+              contactStatus,
+
+              // --------------------------
+              // SOURCE
+              // --------------------------
+
+              source:
+                "Gmail",
+            };
+          }
+        );
+
+      // ====================================
+      // SUMMARY
+      // ====================================
+
+      const totalEmails =
+        reportData.length;
+
+      const uniqueContacts =
+        new Set(
+          reportData.map(
+            (item) =>
+              item.email
+          )
+        ).size;
+
+      const newContacts =
+        new Set(
+          reportData
+            .filter(
+              (item) =>
+                item.contactStatus ===
+                "NEW"
+            )
+            .map(
+              (item) =>
+                item.email
+            )
+        ).size;
+
+      const existingContacts =
+        new Set(
+          reportData
+            .filter(
+              (item) =>
+                item.contactStatus ===
+                "EXISTING"
+            )
+            .map(
+              (item) =>
+                item.email
+            )
+        ).size;
+
+      // ====================================
+      // RESPONSE
+      // ====================================
+
+      res.json({
+        success: true,
+
+        date:
+          dateString,
+
+        timezone:
+          "Asia/Kolkata",
+
+        summary: {
+          totalEmails,
+
+          uniqueContacts,
+
+          newContacts,
+
+          existingContacts,
+        },
+
+        data:
+          reportData,
+      });
+    } catch (error) {
+      console.error(
+        "❌ Daily Email Report Error:",
+        error
       );
 
-    // ======================================
-    // SUMMARY
-    // ======================================
+      res.status(500).json({
+        success: false,
 
-    const totalEmails =
-      reportData.length;
-
-    const uniqueContacts =
-      new Set(
-        reportData.map(
-          (item) =>
-            item.email
-        )
-      ).size;
-
-    const newContacts =
-      new Set(
-        reportData
-          .filter(
-            (item) =>
-              item.contactStatus ===
-              "NEW"
-          )
-          .map(
-            (item) =>
-              item.email
-          )
-      ).size;
-
-    const existingContacts =
-      new Set(
-        reportData
-          .filter(
-            (item) =>
-              item.contactStatus ===
-              "EXISTING"
-          )
-          .map(
-            (item) =>
-              item.email
-          )
-      ).size;
-
-    // ======================================
-    // RESPONSE
-    // ======================================
-
-    res.json({
-      success: true,
-
-      date:
-        dateString,
-
-      timezone:
-        "Asia/Kolkata",
-
-      summary: {
-        totalEmails,
-
-        uniqueContacts,
-
-        newContacts,
-
-        existingContacts,
-      },
-
-      data:
-        reportData,
-    });
-  } catch (error) {
-    console.error(
-      "❌ Daily Email Report Error:",
-      error
-    );
-
-    res.status(500).json({
-      success: false,
-
-      message:
-        error.message,
-    });
-  }
-};
+        message:
+          error.message,
+      });
+    }
+  };
 
 // ==========================================
 // RUN GMAIL SMART SYNC
 // ==========================================
 
-const runGmailSync = async (
-  req,
-  res
-) => {
-  try {
-    console.log(
-      "\n=================================="
-    );
+const runGmailSync =
+  async (
+    req,
+    res
+  ) => {
+    try {
+      console.log(
+        "\n=================================="
+      );
 
-    console.log(
-      "🚀 Manual Gmail Sync Requested"
-    );
+      console.log(
+        "🚀 Manual Gmail Sync Requested"
+      );
 
-    console.log(
-      "=================================="
-    );
+      console.log(
+        "=================================="
+      );
 
-    const result =
-      await syncEmails();
+      const result =
+        await syncEmails();
 
-    // ======================================
-    // SYNC FAILED
-    // ======================================
+      // ====================================
+      // SYNC FAILED
+      // ====================================
 
-    if (!result.success) {
-      return res.status(500).json({
+      if (
+        !result.success
+      ) {
+        return res.status(
+          500
+        ).json({
+          success: false,
+
+          message:
+            result.message ||
+            "Gmail sync failed",
+        });
+      }
+
+      // ====================================
+      // SYNC SUCCESS
+      // ====================================
+
+      res.json({
+        success: true,
+
+        message:
+          "Gmail sync completed successfully",
+
+        result,
+      });
+    } catch (error) {
+      console.error(
+        "❌ Gmail Sync Error:",
+        error
+      );
+
+      res.status(500).json({
         success: false,
 
         message:
-          result.message ||
-          "Gmail sync failed",
+          error.message,
       });
     }
+  };
 
-    // ======================================
-    // SYNC SUCCESS
-    // ======================================
+// ==========================================
+// GET GMAIL MAILBOXES
+// ==========================================
+//
+// GET:
+// /api/gmail/mailboxes
+//
+// ==========================================
 
-    res.json({
-      success: true,
+const getGmailMailboxes =
+  async (
+    req,
+    res
+  ) => {
+    try {
+      const mailboxes =
+        await GmailMailbox.find(
+          {}
+        )
+          .sort({
+            email: 1,
+          })
+          .lean();
 
-      message:
-        "Gmail sync completed successfully",
+      res.json({
+        success: true,
 
-      result,
-    });
-  } catch (error) {
-    console.error(
-      "❌ Gmail Sync Error:",
-      error
-    );
+        count:
+          mailboxes.length,
 
-    res.status(500).json({
-      success: false,
+        data:
+          mailboxes,
+      });
+    } catch (error) {
+      console.error(
+        "❌ Get Gmail Mailboxes Error:",
+        error
+      );
 
-      message:
-        error.message,
-    });
-  }
-};
+      res.status(500).json({
+        success: false,
+
+        message:
+          error.message,
+      });
+    }
+  };
 
 // ==========================================
 // EXPORTS
@@ -931,8 +1281,14 @@ const runGmailSync = async (
 
 module.exports = {
   getEmails,
+
   getEmailContacts,
+
   getEmailById,
+
   getDailyEmailReport,
+
   runGmailSync,
+
+  getGmailMailboxes,
 };

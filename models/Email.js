@@ -2,31 +2,94 @@ const mongoose = require("mongoose");
 
 const EmailSchema = new mongoose.Schema(
   {
+    // ==========================================
+    // GMAIL MESSAGE ID
+    // ==========================================
+
     gmailId: {
       type: String,
-      unique: true,
       required: true,
+      trim: true,
     },
 
-    threadId: String,
+    // ==========================================
+    // MAILBOX FROM WHICH EMAIL WAS SYNCED
+    // ==========================================
 
-    from: String,
+    mailbox: {
+      type: String,
+      required: true,
+      lowercase: true,
+      trim: true,
+    },
 
-    to: String,
+    // ==========================================
+    // GMAIL THREAD
+    // ==========================================
 
-    cc: String,
+    threadId: {
+      type: String,
+    },
 
-    subject: String,
+    // ==========================================
+    // EMAIL DETAILS
+    // ==========================================
 
-    snippet: String,
+    from: {
+      type: String,
+      default: "",
+    },
 
-    body: String,
+    to: {
+      type: String,
+      default: "",
+    },
 
-    date: Date,
+    cc: {
+      type: String,
+      default: "",
+    },
 
-    labels: [String],
+    subject: {
+      type: String,
+      default: "",
+    },
 
-    isRead: Boolean,
+    snippet: {
+      type: String,
+      default: "",
+    },
+
+    body: {
+      type: String,
+      default: "",
+    },
+
+    date: {
+      type: Date,
+    },
+
+    // ==========================================
+    // GMAIL LABELS
+    // ==========================================
+
+    labels: {
+      type: [String],
+      default: [],
+    },
+
+    // ==========================================
+    // READ STATUS
+    // ==========================================
+
+    isRead: {
+      type: Boolean,
+      default: false,
+    },
+
+    // ==========================================
+    // ATTACHMENTS
+    // ==========================================
 
     attachments: [
       {
@@ -38,6 +101,20 @@ const EmailSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+  }
+);
+
+// ==========================================
+// UNIQUE EMAIL PER MAILBOX
+// ==========================================
+
+EmailSchema.index(
+  {
+    mailbox: 1,
+    gmailId: 1,
+  },
+  {
+    unique: true,
   }
 );
 

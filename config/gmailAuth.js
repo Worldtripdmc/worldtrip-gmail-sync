@@ -2,34 +2,51 @@ const fs = require("fs");
 const path = require("path");
 const { google } = require("googleapis");
 
+// ==========================================
+// SERVICE ACCOUNT CREDENTIALS
+// ==========================================
+
 const CREDENTIALS_PATH = path.join(
   __dirname,
   "../credentials/credentials.json"
 );
 
-const TOKEN_PATH = path.join(
-  __dirname,
-  "../credentials/token.json"
+const credentials = JSON.parse(
+  fs.readFileSync(CREDENTIALS_PATH, "utf8")
 );
 
-const content = fs.readFileSync(CREDENTIALS_PATH);
-const credentials = JSON.parse(content);
+// ==========================================
+// DOMAIN-WIDE DELEGATION SCOPES
+// ==========================================
 
-const { client_id, client_secret, redirect_uris } = credentials.web;
+const SCOPES = [
+  "https://www.googleapis.com/auth/gmail.readonly",
+  "https://www.googleapis.com/auth/admin.directory.user.readonly",
+];
 
-const oauth2Client = new google.auth.OAuth2(
-  client_id,
-  client_secret,
-  redirect_uris[0]
-);
+// ==========================================
+// CREATE AUTH CLIENT FOR A MAILBOX
+// ==========================================
 
-// Load saved token
-if (fs.existsSync(TOKEN_PATH)) {
-  const token = JSON.parse(fs.readFileSync(TOKEN_PATH));
-  oauth2Client.setCredentials(token);
-  console.log("✅ Gmail token loaded");
-} else {
-  console.log("❌ token.json not found");
+function getGmailAuth(userEmail) {
+  if (!userEmail) {
+    throw new Error(
+      "Gmail user email is required for impersonation."
+    );
+  }
+
+  return new google.auth.JWT({
+    email: credentials.client_email,
+    key: credentials.private_key,
+    scopes: SCOPES,
+    subject: userEmail,
+  });
 }
 
-module.exports = oauth2Client;
+// ==========================================
+// EXPORT
+// ==========================================
+
+module.exports = {
+  getGmailAuth,
+};

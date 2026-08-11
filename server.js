@@ -53,12 +53,17 @@ app.get("/", (req, res) => {
 // AUTOMATIC GMAIL SYNC
 // ==========================================
 //
-// Server start hone ke baad:
-// 1. Immediately Gmail sync
-// 2. Every 10 minutes automatic sync
+// Server start hone par:
+// ❌ Gmail sync immediately nahi chalega
 //
-// Existing emails duplicate nahi honge because
-// gmailSyncService already checks gmailId.
+// Server start ke 10 minutes baad:
+// ✅ Automatic Gmail sync chalega
+//
+// Uske baad:
+// ✅ Har 10 minutes sync
+//
+// Agar previous sync abhi bhi running hai:
+// ⏭️ Next cycle skip hoga
 // ==========================================
 
 let gmailSyncRunning = false;
@@ -67,95 +72,103 @@ let gmailSyncRunning = false;
 // RUN AUTOMATIC SYNC
 // ==========================================
 
-const runAutomaticGmailSync =
-  async () => {
-    // --------------------------------------
-    // PREVENT OVERLAPPING SYNC
-    // --------------------------------------
+const runAutomaticGmailSync = async () => {
 
-    if (gmailSyncRunning) {
+  // ======================================
+  // PREVENT OVERLAPPING SYNC
+  // ======================================
+
+  if (gmailSyncRunning) {
+    console.log(
+      "⏳ Gmail sync already running. Skipping this cycle."
+    );
+
+    return;
+  }
+
+  try {
+
+    gmailSyncRunning = true;
+
+    console.log(
+      "\n=================================="
+    );
+
+    console.log(
+      "🤖 Automatic Gmail Sync Started"
+    );
+
+    console.log(
+      new Date().toLocaleString(
+        "en-IN",
+        {
+          timeZone:
+            "Asia/Kolkata",
+        }
+      )
+    );
+
+    console.log(
+      "=================================="
+    );
+
+    const result =
+      await syncEmails();
+
+    // ====================================
+    // RESULT
+    // ====================================
+
+    if (result.success) {
+
       console.log(
-        "⏳ Gmail sync already running. Skipping this cycle."
+        "\n✅ Automatic Gmail Sync Completed"
       );
 
-      return;
-    }
-
-    try {
-      gmailSyncRunning = true;
-
       console.log(
-        "\n=================================="
+        `📥 Scanned: ${result.scanned}`
       );
 
       console.log(
-        "🤖 Automatic Gmail Sync Started"
+        `⏭️ Already Exists: ${result.alreadyExists}`
       );
 
       console.log(
-        new Date().toLocaleString(
-          "en-IN",
-          {
-            timeZone:
-              "Asia/Kolkata",
-          }
-        )
+        `🆕 Newly Inserted: ${result.inserted}`
       );
 
       console.log(
-        "=================================="
+        `❌ Failed: ${result.failed}`
       );
 
-      const result =
-        await syncEmails();
+    } else {
 
-      // ------------------------------------
-      // RESULT
-      // ------------------------------------
-
-      if (result.success) {
-        console.log(
-          "\n✅ Automatic Gmail Sync Completed"
-        );
-
-        console.log(
-          `📥 Scanned: ${result.scanned}`
-        );
-
-        console.log(
-          `⏭️ Already Exists: ${result.alreadyExists}`
-        );
-
-        console.log(
-          `🆕 Newly Inserted: ${result.inserted}`
-        );
-
-        console.log(
-          `❌ Failed: ${result.failed}`
-        );
-      } else {
-        console.error(
-          "\n❌ Automatic Gmail Sync Failed:"
-        );
-
-        console.error(
-          result.message
-        );
-      }
-    } catch (error) {
       console.error(
-        "\n❌ Automatic Gmail Sync Error:"
+        "\n❌ Automatic Gmail Sync Failed:"
       );
 
-      console.error(error);
-    } finally {
-      gmailSyncRunning = false;
-
-      console.log(
-        "==================================\n"
+      console.error(
+        result.message
       );
     }
-  };
+
+  } catch (error) {
+
+    console.error(
+      "\n❌ Automatic Gmail Sync Error:"
+    );
+
+    console.error(error);
+
+  } finally {
+
+    gmailSyncRunning = false;
+
+    console.log(
+      "==================================\n"
+    );
+  }
+};
 
 // ==========================================
 // DATABASE + SERVER
@@ -167,6 +180,7 @@ const PORT =
   process.env.PORT || 8000;
 
 app.listen(PORT, () => {
+
   console.log(
     `Server running on port ${PORT}`
   );
@@ -180,6 +194,10 @@ app.listen(PORT, () => {
   );
 
   console.log(
+    "⏱️ First automatic sync: After 10 Minutes"
+  );
+
+  console.log(
     "⏱️ Sync Interval: Every 10 Minutes"
   );
 
@@ -187,19 +205,17 @@ app.listen(PORT, () => {
     "=================================="
   );
 
-  // ----------------------------------------
-  // FIRST SYNC
-  // ----------------------------------------
-
   console.log(
-    "🚀 Running initial Gmail sync..."
+    "⏳ Initial Gmail sync skipped."
   );
 
-  runAutomaticGmailSync();
+  console.log(
+    "📅 Next automatic Gmail sync will run in 10 minutes."
+  );
 
-  // ----------------------------------------
+  // ========================================
   // REPEATED SYNC
-  // ----------------------------------------
+  // ========================================
   //
   // 10 minutes = 600000 milliseconds
   //
